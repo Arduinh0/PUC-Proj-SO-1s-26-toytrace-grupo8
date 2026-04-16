@@ -1,0 +1,5 @@
+Exemplo aproximado depois da implementacao:
+
+execve("./tests/targets/hello_write", ...) = 0
+write(1, 0x7ffd0000, 13) = 13
+exit_group(0) = 0
