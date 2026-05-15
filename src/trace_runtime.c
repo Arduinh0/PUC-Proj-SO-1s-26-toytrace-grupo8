@@ -1,8 +1,9 @@
 #include "trace_runtime.h"
 
+#include <stdio.h>
 #include <errno.h>
 #include <signal.h>
-#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/ptrace.h>
 #include <sys/user.h>
@@ -52,8 +53,35 @@ static pid_t launch_tracee(char *const argv[])
      *
      * Em erro, imprima uma mensagem com perror() e retorne -1.
      */
-    fprintf(stderr, "erro: TODO Semana 2: implementar launch_tracee()\n");
-    return -1;
+
+    pid_t child = fork();
+
+    if (child == -1) {
+        perror("Erro: Fork Falho\n");
+        return -1;
+    }
+
+    if (child == 0) {
+        /* --- Filho --- */
+        
+        /* Passagem de Parâmetros [Requisição, Pid, Addr, Data] */
+        if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) < 0) {
+            perror("Erro no ptrace: TRACEME\n");
+            exit(EXIT_FAILURE);
+        }
+
+        /* Filho levanta a flag para Pai configurar a trace */
+        raise(SIGSTOP);
+
+        execvp(argv[0], argv);
+
+        /* Execvp Falha */
+        perror("Erro no execvp\n");
+        exit(EXIT_FAILURE);
+    }
+
+    /* --- Pai --- */
+    return child;
 }
 
 static int wait_for_initial_stop(pid_t child)
@@ -66,7 +94,21 @@ static int wait_for_initial_stop(pid_t child)
      *
      * Retorne 0 se o filho parou como esperado, -1 em erro.
      */
-    fprintf(stderr, "erro: TODO Semana 2: implementar wait_for_initial_stop()\n");
+
+    int status;
+
+    /* Aguarda a mudança do Filho */
+    if (waitpid(child, &status, 0) == -1) {
+        perror("Erro: waitpid inicial\n");
+        return -1;
+    }
+
+    /* Confirmação da Pausa */
+    if (WIFSTOPPED(status)) {
+        return 0;
+    }
+
+    fprintf(stderr, "Erro: filho não parou no SIGSTOP\n");
     return -1;
 }
 
