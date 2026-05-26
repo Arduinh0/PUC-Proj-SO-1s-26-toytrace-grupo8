@@ -33,6 +33,20 @@ static void fill_event_from_regs(pid_t pid,
     memset(ev, 0, sizeof(*ev));
     ev->pid = pid;
     ev->entering = entering;
+
+    // Pega o número da chamada de sistema
+    ev->syscall_no = regs->orig_rax;
+
+    // Pega o valor de retorno (só será realmente válido quando entering == 0)
+    ev->ret = regs->rax;
+
+    // Pega os 6 argumentos passados para a syscall
+    ev->args[0] = regs->rdi;
+    ev->args[1] = regs->rsi;
+    ev->args[2] = regs->rdx;
+    ev->args[3] = regs->r10;
+    ev->args[4] = regs->r8;
+    ev->args[5] = regs->r9;
 }
 
 static pid_t launch_tracee(char *const argv[])
@@ -248,12 +262,18 @@ int trace_program(char *const argv[],
         }
 
         /*
-         * TODO Semana 4:
+         * TODO Semana 4: FEITO
          *
          * Use PTRACE_GETREGS para preencher regs.
          * Depois chame fill_event_from_regs() e observer().
          */
         memset(&regs, 0, sizeof(regs));
+
+        if (ptrace(PTRACE_GETREGS, child, NULL, &regs) < 0) {
+            perror("Erro: ptrace GETREGS");
+            return -1;
+        }
+
         fill_event_from_regs(child, entering, &regs, &ev);
         if (observer != NULL) {
             observer(&ev, userdata);
